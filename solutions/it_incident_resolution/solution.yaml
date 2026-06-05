@@ -1,0 +1,161 @@
+solution_id: it_incident_resolution_copilot
+solution_name: IT Incident Resolution Copilot
+runtime: deepagents
+environment: prototype
+
+model:
+  logical_name: default_reasoning_model
+  temperature: 0.1
+  provider_model: anthropic:claude-sonnet-4-6
+
+prompt:
+  system_prompt_ref: prompts/incident_copilot_system.md
+  response_format: markdown_incident_report
+
+knowledge:
+  sources:
+    - id: it_incident_sop
+      type: mock_rag
+      path: knowledge/it_incident_sop.md
+    - id: service_catalog
+      type: mock_rag
+      path: knowledge/service_catalog.md
+    - id: historical_incidents
+      type: mock_rag
+      path: knowledge/historical_incidents.json
+
+tools:
+  - name: get_ticket
+    adapter: mock_ticketing
+    risk: read_only
+    approval_required: false
+
+  - name: search_sop
+    adapter: mock_knowledge
+    risk: read_only
+    approval_required: false
+
+  - name: search_service_catalog
+    adapter: mock_knowledge
+    risk: read_only
+    approval_required: false
+
+  - name: search_similar_incidents
+    adapter: mock_knowledge
+    risk: read_only
+    approval_required: false
+
+  - name: draft_ticket_update
+    adapter: mock_ticketing
+    risk: draft_only
+    approval_required: false
+
+  - name: update_ticket
+    adapter: mock_ticketing
+    risk: internal_write
+    approval_required: true
+    allowed_decisions:
+      - approve
+      - edit
+      - reject
+
+  - name: escalate_ticket
+    adapter: mock_ticketing
+    risk: internal_write
+    approval_required: true
+    allowed_decisions:
+      - approve
+      - reject
+
+  - name: notify_team
+    adapter: mock_notification
+    risk: internal_side_effect
+    approval_required: true
+    allowed_decisions:
+      - approve
+      - edit
+      - reject
+
+subagents:
+  - name: sop-policy-checker
+    description: Checks whether proposed recommendations comply with the approved IT incident SOP.
+    system_prompt_ref: prompts/subagents/sop_policy_checker.md
+    tools:
+      - search_sop
+      - search_service_catalog
+
+  - name: historical-case-researcher
+    description: Finds similar incidents and summarises what worked before.
+    system_prompt_ref: prompts/subagents/historical_case_researcher.md
+    tools:
+      - search_similar_incidents
+
+  - name: action-risk-reviewer
+    description: Reviews proposed updates, escalations, and notifications for risk before execution.
+    system_prompt_ref: prompts/subagents/action_risk_reviewer.md
+    tools:
+      - search_sop
+      - get_ticket
+
+backend:
+  default: state
+  memory:
+    enabled: true
+    route: /memories/
+    scope: user
+  workspace:
+    route: /workspace/
+    type: state
+
+skills:
+  - skills/incident_triage
+  - skills/ticket_update_drafting
+  - skills/escalation_policy
+
+memory:
+  files:
+    - /memories/preferences.md
+    - /memories/incident_lessons.md
+  writable: false
+
+permissions:
+  filesystem:
+    - operations: [read, write]
+      paths: ["/workspace/**"]
+      mode: allow
+    - operations: [write]
+      paths: ["/memories/**"]
+      mode: deny
+    - operations: [write]
+      paths: ["/policies/**"]
+      mode: deny
+
+guardrails:
+  input:
+    - block_prompt_injection
+    - detect_sensitive_data
+  output:
+    - require_sop_reference
+    - no_fake_action_claims
+  tool_call:
+    - validate_ticket_id
+    - validate_escalation_group
+    - non_empty_ticket_comment
+    - allowed_notification_channel
+
+observability:
+  enabled: true
+  log_model_calls: true
+  log_tool_calls: true
+  log_human_approvals: true
+  log_subagents: true
+  output_path: .runs/events.jsonl
+
+evaluation:
+  dataset: evals/incident_resolution_cases.jsonl
+  checks:
+    - correct_tool_sequence
+    - approval_required_for_write_tools
+    - no_update_without_approval
+    - sop_grounded_recommendation
+    - final_answer_contains_action_status

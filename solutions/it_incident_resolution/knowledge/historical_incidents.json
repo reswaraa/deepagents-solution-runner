@@ -1,0 +1,57 @@
+[
+  {
+    "id": "INC-0921",
+    "service": "payment-api",
+    "summary": "Payment API latency spike caused by saturated downstream auth call.",
+    "symptoms": ["p95 latency above 800ms", "5xx error rate above 2%"],
+    "resolution": "Escalated to payments-platform-oncall. Failover to secondary auth region resolved latency in 12 minutes.",
+    "escalated_to": "payments-platform-oncall",
+    "notified_channel": "#incident-room",
+    "sop_section": "Section 3 — Escalation policy",
+    "tags": ["payments", "latency", "escalation"]
+  },
+  {
+    "id": "INC-0844",
+    "service": "payment-api",
+    "summary": "Payment API 5xx after deploy caused by misconfigured circuit breaker.",
+    "symptoms": ["sudden 5xx spike post deploy"],
+    "resolution": "Rolled back deploy. No escalation needed.",
+    "escalated_to": null,
+    "notified_channel": null,
+    "sop_section": "Section 2 — Investigation order",
+    "tags": ["payments", "deploy", "rollback"]
+  },
+  {
+    "id": "INC-0760",
+    "service": "login-service",
+    "summary": "Login error spike caused by expired OAuth signing key.",
+    "symptoms": ["401 spike", "user complaints"],
+    "resolution": "Rotated signing key. Escalated to identity-platform-oncall.",
+    "escalated_to": "identity-platform-oncall",
+    "notified_channel": "#status-public",
+    "sop_section": "Section 3 — Escalation policy",
+    "tags": ["identity", "oauth", "auth"]
+  },
+  {
+    "id": "INC-0688",
+    "service": "data-pipeline",
+    "summary": "Daily ingestion delayed by upstream vendor outage.",
+    "symptoms": ["data freshness SLA breach"],
+    "resolution": "Notified data-platform-oncall and #ops-noise. Vendor restored in 90 min.",
+    "escalated_to": "data-platform-oncall",
+    "notified_channel": "#ops-noise",
+    "sop_section": "Section 5 — Notification policy",
+    "tags": ["data", "pipeline", "vendor"]
+  },
+  {
+    "id": "INC-0612",
+    "service": "billing-api",
+    "summary": "Billing API timeout under load due to slow SQL query.",
+    "symptoms": ["p95 latency above 2s"],
+    "resolution": "Added missing index. No escalation.",
+    "escalated_to": null,
+    "notified_channel": null,
+    "sop_section": "Section 2 — Investigation order",
+    "tags": ["billing", "latency", "sql"]
+  }
+]

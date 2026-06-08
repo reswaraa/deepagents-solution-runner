@@ -53,14 +53,86 @@ APPROVAL_REQUIRED_RISKS: frozenset[RiskLevel] = frozenset(
 
 
 class ModelConfig(BaseModel):
-    """Logical model declaration resolved by ``MockLLMGateway``."""
+    """Logical model declaration resolved by ``MockLLMGateway``.
+
+    For standard provider prefixes (``anthropic:``, ``openai:``,
+    ``bedrock_converse:``, ``google_genai:`` …) only ``provider_model`` is
+    required.
+
+    For an **OpenAI-compatible custom endpoint** (Azure AI Foundry
+    serverless, vLLM, LM Studio, internal model gateway, …):
+
+    * set ``provider_model`` to ``openai_compatible:<model-name>``
+    * set ``base_url`` to the endpoint base (must end with ``/v1`` for
+      Azure AI Foundry serverless)
+    * set ``api_key_env`` to the env-var name that holds the key
+      (the key itself **does not** go in YAML)
+    """
 
     logical_name: str = Field(..., min_length=1)
     temperature: float = Field(0.1, ge=0.0, le=2.0)
     provider_model: str = Field(
         ...,
-        description="Concrete provider:model string, e.g. 'anthropic:claude-sonnet-4-6'.",
+        description=(
+            "Concrete provider:model string, e.g. 'anthropic:claude-sonnet-4-6' "
+            "or 'openai_compatible:kimi-k2.6'."
+        ),
     )
+    base_url: str | None = Field(
+        None,
+        description=(
+            "Base URL for OpenAI-compatible endpoints (e.g. Azure AI Foundry). "
+            "Required when provider is 'openai_compatible'."
+        ),
+    )
+    api_key_env: str | None = Field(
+        None,
+        description=(
+            "Name of the environment variable holding the API key. Required "
+            "when provider is 'openai_compatible'. The key itself MUST NOT "
+            "appear in YAML."
+        ),
+    )
+    extra_headers: dict[str, str] | None = Field(
+        None,
+        description="Optional extra HTTP headers (e.g. tenant id, deployment id).",
+    )
+
+    @model_validator(mode="after")
+    def _validate_openai_compatible(self) -> "ModelConfig":
+        prefix = (
+            self.provider_model.split(":", 1)[0].lower()
+            if ":" in self.provider_model
+            else ""
+        )
+        if prefix == "openai_compatible":
+            missing: list[str] = []
+            if not self.base_url:
+                missing.append("base_url")
+            if not self.api_key_env:
+                missing.append("api_key_env")
+            if missing:
+                raise ValueError(
+                    f"provider_model '{self.provider_model}' requires "
+                    f"{missing} for openai_compatible endpoints."
+                )
+            model_name = (
+                self.provider_model.split(":", 1)[1]
+                if ":" in self.provider_model
+                else ""
+            )
+            if not model_name:
+                raise ValueError(
+                    "openai_compatible provider_model must be "
+                    "'openai_compatible:<model-name>'."
+                )
+        elif self.base_url or self.api_key_env or self.extra_headers:
+            # base_url / api_key_env only make sense for openai_compatible
+            raise ValueError(
+                "base_url / api_key_env / extra_headers are only valid for "
+                "'openai_compatible:' provider_models."
+            )
+        return self
 
 
 class PromptConfig(BaseModel):
@@ -117,6 +189,14 @@ class SubagentConfig(BaseModel):
     description: str = Field(..., min_length=1)
     system_prompt_ref: str = Field(..., min_length=1)
     tools: list[str] = Field(default_factory=list)
+    model: ModelConfig | None = Field(
+        None,
+        description=(
+            "Per-subagent model override. If unset, the subagent inherits "
+            "the main agent's model. Use this to route cheap / specialist "
+            "subagents (e.g. code-writing) to a different endpoint."
+        ),
+    )
 
 
 class BackendMemoryConfig(BaseModel):

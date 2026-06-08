@@ -6,7 +6,22 @@ environment: prototype
 model:
   logical_name: default_reasoning_model
   temperature: 0.1
-  provider_model: anthropic:claude-sonnet-4-6
+  # Pick ONE provider_model line. Examples:
+  #   provider_model: anthropic:claude-sonnet-4-6
+  #   provider_model: openai:gpt-4o
+  #   provider_model: bedrock_converse:anthropic.claude-sonnet-4-5-20250929-v1:0
+  #   provider_model: bedrock_converse:us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  # For Bedrock you also need AWS_REGION (or AWS_DEFAULT_REGION) plus any
+  # standard AWS credential source (env vars, AWS_PROFILE, instance role).
+  #
+  # Azure AI Foundry / OpenAI-compatible endpoint (Kimi, DeepSeek, etc.):
+  # The base_url is the Azure AI Foundry resource endpoint; the model
+  # name in provider_model must match the deployment name exactly
+  # (case-sensitive — see Foundry Deployments tab).
+  provider_model: openai_compatible:Kimi-K2.6
+  base_url:
+  api_key_env: AZURE_AI_FOUNDRY_KEY
+  # provider_model: bedrock_converse:global.anthropic.claude-sonnet-4-5-20250929-v1:0
 
 prompt:
   system_prompt_ref: prompts/incident_copilot_system.md
@@ -121,13 +136,13 @@ memory:
 permissions:
   filesystem:
     - operations: [read, write]
-      paths: ["/workspace/**"]
+      paths: ['/workspace/**']
       mode: allow
     - operations: [write]
-      paths: ["/memories/**"]
+      paths: ['/memories/**']
       mode: deny
     - operations: [write]
-      paths: ["/policies/**"]
+      paths: ['/policies/**']
       mode: deny
 
 guardrails:

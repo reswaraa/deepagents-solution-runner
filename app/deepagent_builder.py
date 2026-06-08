@@ -172,6 +172,12 @@ class DeepAgentSolutionBuilder:
                 "system_prompt": prompt_registry.load(sub.system_prompt_ref),
                 "tools": sub_tools,
             }
+            if sub.model is not None:
+                resolved = self.llm_gateway.resolve_model(sub.model)
+                # Pass through whatever we resolved — either a string the
+                # DeepAgents harness can init itself, or a configured
+                # BaseChatModel instance.
+                spec["model"] = resolved.model
             out.append(spec)
         return out
 

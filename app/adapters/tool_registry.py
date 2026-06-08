@@ -14,7 +14,7 @@ from langchain_core.tools import BaseTool
 
 from app.adapters.knowledge_adapter import MockKnowledgeAdapter
 from app.schemas import ToolConfig
-from app.tools import mock_knowledge, mock_notification, mock_ticketing
+from app.tools import mock_knowledge, mock_notification, mock_provisioning, mock_ticketing
 
 
 class UnknownToolError(KeyError):
@@ -50,6 +50,10 @@ def _knowledge_factory(name: str) -> _ToolFactory:
         "search_sop": mock_knowledge.build_search_sop_tool,
         "search_service_catalog": mock_knowledge.build_search_service_catalog_tool,
         "search_similar_incidents": mock_knowledge.build_search_similar_incidents_tool,
+        # Employee Access Provisioning knowledge tools
+        "search_access_policy": mock_knowledge.build_search_access_policy_tool,
+        "search_system_catalog": mock_knowledge.build_search_system_catalog_tool,
+        "search_provisioning_history": mock_knowledge.build_search_provisioning_history_tool,
     }
 
     def _factory(registry: "MockToolRegistry") -> BaseTool:
@@ -65,6 +69,20 @@ def _knowledge_factory(name: str) -> _ToolFactory:
 def _notification_factory(name: str) -> _ToolFactory:
     builders: dict[str, Callable[[], BaseTool]] = {
         "notify_team": mock_notification.build_notify_team_tool,
+    }
+
+    def _factory(_registry: "MockToolRegistry") -> BaseTool:
+        return builders[name]()
+
+    return _factory
+
+
+def _provisioning_factory(name: str) -> _ToolFactory:
+    builders: dict[str, Callable[[], BaseTool]] = {
+        "get_access_request": mock_provisioning.build_get_access_request_tool,
+        "draft_access_change": mock_provisioning.build_draft_access_change_tool,
+        "grant_access": mock_provisioning.build_grant_access_tool,
+        "revoke_access": mock_provisioning.build_revoke_access_tool,
     }
 
     def _factory(_registry: "MockToolRegistry") -> BaseTool:
@@ -90,6 +108,14 @@ _TOOL_FACTORIES: dict[tuple[str, str], _ToolFactory] = {
         "search_similar_incidents"
     ),
     ("mock_notification", "notify_team"): _notification_factory("notify_team"),
+    # Employee Access Provisioning tools
+    ("mock_provisioning", "get_access_request"): _provisioning_factory("get_access_request"),
+    ("mock_provisioning", "draft_access_change"): _provisioning_factory("draft_access_change"),
+    ("mock_provisioning", "grant_access"): _provisioning_factory("grant_access"),
+    ("mock_provisioning", "revoke_access"): _provisioning_factory("revoke_access"),
+    ("mock_knowledge", "search_access_policy"): _knowledge_factory("search_access_policy"),
+    ("mock_knowledge", "search_system_catalog"): _knowledge_factory("search_system_catalog"),
+    ("mock_knowledge", "search_provisioning_history"): _knowledge_factory("search_provisioning_history"),
 }
 
 

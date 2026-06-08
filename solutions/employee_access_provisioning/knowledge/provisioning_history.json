@@ -1,0 +1,50 @@
+[
+  {
+    "id": "REQ-1980",
+    "type": "onboarding",
+    "employee_name": "Previous Junior Developer",
+    "role": "Junior Developer",
+    "department": "Software Engineering",
+    "systems_provisioned": ["github-org", "jira", "slack", "vpn-basic"],
+    "outcome": "approved",
+    "completed_at": "2026-05-01T10:00:00Z",
+    "notes": "Standard onboarding for junior developer. All tier-1 and tier-2 systems provisioned within 2 business days."
+  },
+  {
+    "id": "REQ-1991",
+    "type": "role_change",
+    "employee_name": "Previous Platform Engineer",
+    "role": "Senior DevOps Engineer",
+    "previous_role": "Software Engineer",
+    "department": "Platform Engineering",
+    "systems_provisioned": ["aws-console-prod", "kubernetes-dashboard-prod", "datadog"],
+    "systems_revoked": [],
+    "outcome": "approved_with_caveats",
+    "completed_at": "2026-05-10T15:30:00Z",
+    "notes": "Tier-3 access for aws-console-prod and kubernetes-dashboard-prod required CISO review. Delayed 3 business days. Security team notified via #security-ops. MFA enrollment confirmed before provisioning."
+  },
+  {
+    "id": "REQ-1994",
+    "type": "offboarding",
+    "employee_name": "Previous Finance Analyst",
+    "role": "Finance Analyst",
+    "department": "Finance",
+    "systems_revoked": ["slack", "jira", "finance-reporting", "sap-hana"],
+    "outcome": "approved",
+    "completed_at": "2026-05-15T11:00:00Z",
+    "notes": "Finance systems (finance-reporting, sap-hana) revoked within 3 hours of last day. CFO notified. All other systems revoked within 24 hours."
+  },
+  {
+    "id": "REQ-1998",
+    "type": "role_change",
+    "employee_name": "Previous IT Support Engineer",
+    "role": "DevOps Engineer",
+    "previous_role": "IT Support Engineer",
+    "department": "Platform Engineering",
+    "systems_provisioned": ["github-org", "datadog", "vpn-basic"],
+    "systems_revoked": ["it-helpdesk-portal"],
+    "outcome": "approved",
+    "completed_at": "2026-05-20T14:00:00Z",
+    "notes": "it-helpdesk-portal revoked before new access granted per policy section 3. Tier-2 systems only; no CISO review needed."
+  }
+]

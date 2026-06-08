@@ -1,0 +1,155 @@
+solution_id: employee_access_provisioning_copilot
+solution_name: Employee Access Provisioning Copilot
+runtime: deepagents
+environment: prototype
+
+model:
+  logical_name: default_reasoning_model
+  temperature: 0.1
+  provider_model: openai_compatible:Kimi-K2.6
+  base_url:
+  api_key_env: AZURE_AI_FOUNDRY_KEY
+
+prompt:
+  system_prompt_ref: prompts/access_provisioning_system.md
+  response_format: markdown_provisioning_report
+
+knowledge:
+  sources:
+    - id: access_policies
+      type: mock_rag
+      path: knowledge/access_policies.md
+    - id: system_catalog
+      type: mock_rag
+      path: knowledge/system_catalog.md
+    - id: provisioning_history
+      type: mock_rag
+      path: knowledge/provisioning_history.json
+
+tools:
+  - name: get_access_request
+    adapter: mock_provisioning
+    risk: read_only
+    approval_required: false
+
+  - name: search_access_policy
+    adapter: mock_knowledge
+    risk: read_only
+    approval_required: false
+
+  - name: search_system_catalog
+    adapter: mock_knowledge
+    risk: read_only
+    approval_required: false
+
+  - name: search_provisioning_history
+    adapter: mock_knowledge
+    risk: read_only
+    approval_required: false
+
+  - name: draft_access_change
+    adapter: mock_provisioning
+    risk: draft_only
+    approval_required: false
+
+  - name: grant_access
+    adapter: mock_provisioning
+    risk: internal_write
+    approval_required: true
+    allowed_decisions:
+      - approve
+      - edit
+      - reject
+
+  - name: revoke_access
+    adapter: mock_provisioning
+    risk: internal_write
+    approval_required: true
+    allowed_decisions:
+      - approve
+      - reject
+
+  - name: notify_team
+    adapter: mock_notification
+    risk: internal_side_effect
+    approval_required: true
+    allowed_decisions:
+      - approve
+      - edit
+      - reject
+
+subagents:
+  - name: access-policy-checker
+    description: Verifies that a proposed access grant or revocation complies with the access control policy for the employee's role and the target system's tier.
+    system_prompt_ref: prompts/subagents/access_policy_checker.md
+    tools:
+      - search_access_policy
+      - search_system_catalog
+
+  - name: risk-assessor
+    description: Assesses the risk level of a proposed access change, flags privileged or sensitive system access, and recommends additional approval steps if needed.
+    system_prompt_ref: prompts/subagents/risk_assessor.md
+    tools:
+      - search_access_policy
+      - search_system_catalog
+      - get_access_request
+
+backend:
+  default: state
+  memory:
+    enabled: true
+    route: /memories/
+    scope: user
+  workspace:
+    route: /workspace/
+    type: state
+
+skills:
+  - skills/access_review
+  - skills/offboarding_checklist
+
+memory:
+  files:
+    - /memories/preferences.md
+    - /memories/provisioning_lessons.md
+  writable: false
+
+permissions:
+  filesystem:
+    - operations: [read, write]
+      paths: ['/workspace/**']
+      mode: allow
+    - operations: [write]
+      paths: ['/memories/**']
+      mode: deny
+    - operations: [write]
+      paths: ['/policies/**']
+      mode: deny
+
+guardrails:
+  input:
+    - block_prompt_injection
+    - detect_sensitive_data
+  output:
+    - require_policy_reference
+    - no_fake_provisioning_claims
+  tool_call:
+    - validate_request_id
+    - non_empty_justification
+
+observability:
+  enabled: true
+  log_model_calls: true
+  log_tool_calls: true
+  log_human_approvals: true
+  log_subagents: true
+  output_path: .runs/events.jsonl
+
+evaluation:
+  dataset: evals/provisioning_cases.jsonl
+  checks:
+    - correct_tool_sequence
+    - approval_required_for_write_tools
+    - no_write_without_approval
+    - policy_grounded_recommendation
+    - final_answer_contains_action_status

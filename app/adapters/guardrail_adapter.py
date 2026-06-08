@@ -37,6 +37,7 @@ _SENSITIVE_DATA_PATTERNS = [
 ]
 
 _TICKET_ID_RE = re.compile(r"^INC-\d+$")
+_REQUEST_ID_RE = re.compile(r"^REQ-\d+$")
 
 
 @dataclass
@@ -134,6 +135,32 @@ def allowed_notification_channel(
     return GuardrailResult(name="allowed_notification_channel", triggered=False)
 
 
+def validate_request_id(args: dict[str, Any]) -> GuardrailResult:
+    rid = args.get("request_id")
+    if rid is None:
+        return GuardrailResult(name="validate_request_id", triggered=False)
+    if not isinstance(rid, str) or not _REQUEST_ID_RE.match(rid):
+        return GuardrailResult(
+            name="validate_request_id",
+            triggered=True,
+            detail=f"invalid request id: {rid!r}",
+        )
+    return GuardrailResult(name="validate_request_id", triggered=False)
+
+
+def non_empty_justification(args: dict[str, Any]) -> GuardrailResult:
+    if "justification" not in args:
+        return GuardrailResult(name="non_empty_justification", triggered=False)
+    justification = args.get("justification")
+    if not isinstance(justification, str) or not justification.strip():
+        return GuardrailResult(
+            name="non_empty_justification",
+            triggered=True,
+            detail="empty justification in access change draft",
+        )
+    return GuardrailResult(name="non_empty_justification", triggered=False)
+
+
 # Output guardrails ----------------------------------------------------------
 
 
@@ -181,6 +208,47 @@ def no_fake_action_claims(
     return GuardrailResult(name="no_fake_action_claims", triggered=False)
 
 
+def require_policy_reference(answer: str) -> GuardrailResult:
+    text = answer.lower()
+    if "policy" in text or "section" in text or "tier" in text:
+        return GuardrailResult(name="require_policy_reference", triggered=False)
+    return GuardrailResult(
+        name="require_policy_reference",
+        triggered=True,
+        detail="final answer does not reference access policy or system tier",
+    )
+
+
+def no_fake_provisioning_claims(
+    answer: str,
+    executed_tools: set[str] | None = None,
+) -> GuardrailResult:
+    executed_tools = executed_tools or set()
+    text = answer.lower()
+    claims_grant = (
+        "access granted" in text
+        or "granted access" in text
+        or "provisioned" in text
+    )
+    claims_revoke = (
+        "access revoked" in text
+        or "revoked access" in text
+        or "deprovisioned" in text
+    )
+    triggered_for: list[str] = []
+    if claims_grant and "grant_access" not in executed_tools:
+        triggered_for.append("grant_access")
+    if claims_revoke and "revoke_access" not in executed_tools:
+        triggered_for.append("revoke_access")
+    if triggered_for:
+        return GuardrailResult(
+            name="no_fake_provisioning_claims",
+            triggered=True,
+            detail=f"claimed provisioning actions without execution: {triggered_for}",
+        )
+    return GuardrailResult(name="no_fake_provisioning_claims", triggered=False)
+
+
 # ---------------------------------------------------------------------------
 # Registry & adapter
 # ---------------------------------------------------------------------------
@@ -200,11 +268,19 @@ _TOOL_CALL_GUARDRAILS: dict[str, Callable[..., GuardrailResult]] = {
     "allowed_notification_channel": lambda args, ctx=None: allowed_notification_channel(
         args, allowed_channels=(ctx or {}).get("allowed_channels")
     ),
+    # Employee Access Provisioning guardrails
+    "validate_request_id": lambda args, ctx=None: validate_request_id(args),
+    "non_empty_justification": lambda args, ctx=None: non_empty_justification(args),
 }
 
 _OUTPUT_GUARDRAILS: dict[str, Callable[..., GuardrailResult]] = {
     "require_sop_reference": lambda ans, ctx=None: require_sop_reference(ans),
     "no_fake_action_claims": lambda ans, ctx=None: no_fake_action_claims(
+        ans, executed_tools=(ctx or {}).get("executed_tools")
+    ),
+    # Employee Access Provisioning guardrails
+    "require_policy_reference": lambda ans, ctx=None: require_policy_reference(ans),
+    "no_fake_provisioning_claims": lambda ans, ctx=None: no_fake_provisioning_claims(
         ans, executed_tools=(ctx or {}).get("executed_tools")
     ),
 }

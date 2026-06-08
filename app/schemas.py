@@ -148,7 +148,7 @@ class KnowledgeSourceConfig(BaseModel):
 
 class ToolConfig(BaseModel):
     name: str = Field(..., min_length=1)
-    adapter: Literal["mock_ticketing", "mock_knowledge", "mock_notification"]
+    adapter: Literal["mock_ticketing", "mock_knowledge", "mock_notification", "mock_provisioning"]
     risk: RiskLevel
     approval_required: bool = False
     allowed_decisions: list[Decision] | None = None

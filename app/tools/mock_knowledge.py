@@ -85,3 +85,47 @@ def build_search_similar_incidents_tool(
         source_id="historical_incidents",
         adapter=adapter,
     )
+
+
+# ---------------------------------------------------------------------------
+# Employee Access Provisioning knowledge tools
+# ---------------------------------------------------------------------------
+
+
+def build_search_access_policy_tool(adapter: "MockKnowledgeAdapter") -> StructuredTool:
+    return _make_search_tool(
+        name="search_access_policy",
+        description=(
+            "Search the employee access control policy for the relevant section "
+            "covering onboarding, role-change, offboarding, or privileged access. "
+            "Read-only."
+        ),
+        source_id="access_policies",
+        adapter=adapter,
+    )
+
+
+def build_search_system_catalog_tool(adapter: "MockKnowledgeAdapter") -> StructuredTool:
+    return _make_search_tool(
+        name="search_system_catalog",
+        description=(
+            "Search the internal system catalog for a system's tier, owner team, "
+            "provisioning requirements, and revocation SLA. Read-only."
+        ),
+        source_id="system_catalog",
+        adapter=adapter,
+    )
+
+
+def build_search_provisioning_history_tool(
+    adapter: "MockKnowledgeAdapter",
+) -> StructuredTool:
+    return _make_search_tool(
+        name="search_provisioning_history",
+        description=(
+            "Search historical access provisioning requests for similar cases, "
+            "past caveats, or known patterns for a role or department. Read-only."
+        ),
+        source_id="provisioning_history",
+        adapter=adapter,
+    )
